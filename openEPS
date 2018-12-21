@@ -8,13 +8,13 @@
 
 # Run options
 #
-NAME=test
+NAME=test2
 MODEL=oifs
-HOST=ollin
+HOST=sisu
 
 # Read in command line args
 #
-export VERBOSE=0
+export VERBOSE=1
 RESTART="false"
 
 for arg in "$@"
@@ -30,15 +30,24 @@ case $arg in
 	shift # past arguments
 	shift
 	;;
+    -h|--host)
+	HOST="$2"
+	shift # past arguments
+	shift
+	;;
     -r|--restart)
 	RESTART="true"
 	shift # past empty argument
 	;;
-    -v|--verbose)
-	VERBOSE=1
+    -s|--silent)
+	VERBOSE=0
 	shift # past empty argument
 	;;
-    -h|--help)
+    -dr|--dry-run)
+	DRYRUN="true"
+	shift # past empty argument
+	;;
+    --help)
 	head '-n 21' README
 	exit
 	;;
@@ -69,18 +78,22 @@ printf '\n%s\n\n' "Start date for ensemble is $SDATE and end date $EDATE"
 #
 source bin/util_init.bash
 
-# Launch bash/batch job
-#
+if [ -z $DRYRUN ]; then
+    # Launch bash/batch job
+    #
 
-cd $WORK
-printf "\n3) Submitting job...\n"
+    cd $WORK
+    printf "\n3) Submitting job...\n"
 
-if [ ! -z $SEND_AS_SINGLEJOB ]; then
-    sbatch main.bash
+    if [ ! -z $SEND_AS_SINGLEJOB ]; then
+	sbatch main.bash
+    else
+	bash main.bash &
+    fi
+
+    printf "   ...done! Launcher closing...\n\n"
 else
-    bash main.bash &
+    printf "\n3) submit job from $WORK with sbatch main.bash\n\n"
 fi
-
-printf "   ...done! Launcher closing...\n\n"
 
 exit 1

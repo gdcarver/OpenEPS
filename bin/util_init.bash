@@ -42,27 +42,27 @@ done
 
 # Get model base folder name
 #
-modelbase=$(echo $MODEL | cut -d- -f1)
+#modelbase=$(echo $MODEL | cut -d- -f1)
 
 # Copy scripts
 #
 default=""
+modded=""
 for item in $REQUIRE_ITEMS $REQUIRE_NAMEL; do
-    if [ -f   examples/$MODEL/scripts/$item ]; then
-	cp -f examples/$MODEL/scripts/$item $SCRI/.
-    elif [ -f bin/$item ]; then
-	cp -f bin/$item $WORK/.
-    elif [ ! -z ${!item} ] && [ -f ${!item} ] ; then
-	cp -f ${!item} $WORK/.
+    if [ -f   examples/$MODEL/scripts-$SCR_MOD/$item ]; then
+	cp -f examples/$MODEL/scripts-$SCR_MOD/$item $SCRI/.
+	modded="$modded $item"
     else
 	default="$default $item"
     fi
 done
 
 # Complete by default scripts
+nonutil=""
 for item in $default; do
-    if [ -f   examples/$modelbase/scripts/$item ]; then
-	cp    examples/$modelbase/scripts/$item $SCRI/.
+    if [ -f   examples/$MODEL/scripts/$item ]; then
+	cp    examples/$MODEL/scripts/$item $SCRI/.
+	nonutil="$nonutil $item"
     elif [ -f bin/$item ]; then
 	cp    bin/$item $WORK/.
     elif [ ! -z ${!item} ] && [ -f ${!item} ] ; then
@@ -72,10 +72,9 @@ for item in $default; do
 	exit 1
     fi
 done
-printf "%s %s\n" "   Files requested:    $REQUIRE_ITEMS $REQUIRE_NAMEL"
-if [ ! $modelbase == $MODEL ]; then
-printf "%s \n"   "   Default files used: $default"
-fi
+
+printf "%s %s\n" "   Scripts requested:   $nonutil"
+printf "%s \n"   "   Non-default scripts: $modded"
 printf "\n"
 
 # Copy configs
@@ -98,7 +97,7 @@ export SUBDIR_NAME
 source bin/util_resource_alloc.bash
 
 printf "   *************************************************************\n"
-printf "   OpenEPS will reserve $totncpus cores on $NNODES node(s) for $reservation minutes!\n"
+printf "   OpenEPS will reserve $totncpus cores for $EXPTIME\n"
 printf "   $parallels parallel models will be run, each on $CPUSPERMODEL core(s)\n"
 printf "   *************************************************************\n"
 
@@ -156,6 +155,20 @@ while [ $cdate -le $EDATE ]; do
     # Generate makefile for current date
     if [ $MODEL != lorenz95 ]; then
 	. $SCRI/define_makefile  > $DATA/${DATE_DIR}$cdate/makefile_$cdate
+
+	if [ -e $SCRI/define_makefile_2 ]; then
+	    . $SCRI/define_makefile_2 > $DATA/${DATE_DIR}$cdate/makefile_2_$cdate
+
+	    # Also, copy main.bash and make a version to run makefile_2
+	    cp $WORK/main.bash $WORK/ini.bash
+
+	    # Redo resource allocation
+	    if [ -z $PREP_CPUS ]; then
+		PREP_CPUS=4
+	    fi
+	    sed -i "/#SBATCH -n/c\#SBATCH -n $PREP_CPUS" $WORK/ini.bash
+	    sed -i "/make    -f/c\            make -f makefile_2_\$cdate -j $PREP_CPUS" $WORK/ini.bash
+	fi
     fi
     
     cdate=$ndate
