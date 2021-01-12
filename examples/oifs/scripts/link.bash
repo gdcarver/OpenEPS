@@ -27,30 +27,47 @@ if [ -z $INIPERT ]; then
     INIPERT=0
 fi
 
-
+# Clean directory
 rm -f ICM*+00*
 
 # Link day specific fields
-if [ $RES -ne 21 ]; then # T21 does not need the climate file, also point all
-                         # perts to ctrl
+if [ $RES -ne 21 ]; then # T21 does not need the climate file
     ln -sf ${IFSDATA}/t${RES}/$date/ICMCL${ename}INIT.1  ICMCL${EXPS}INIT
 fi
+
 if [ $nid -eq 0 ] || [ $INIPERT -eq 0 ]; then
     ln -sf ${IFSDATA}/t${RES}/$date/ICMGG${ename}INIT  ICMGG${EXPS}INIT
     ln -sf ${IFSDATA}/t${RES}/$date/ggml$RES           ICMGG${EXPS}INIUA
     ln -sf ${IFSDATA}/t${RES}/$date/ICMSH${ename}INIT  ICMSH${EXPS}INIT
+
 else
+    # Pick odd initial state pertubations
+    if [ ! -z $INIFAIR ] && [ $INIFAIR -eq 1 ]; then
+	nid=$((10#$nid * 2 - 1)) # force into 10-base number with 10#
+	nid=$(printf '%03d' $nid)
+    fi
+
     ln -sf ${IFSDATA}/t${RES}/$date/psu_$nid  ICMGG${EXPS}INIT
     ln -sf ${IFSDATA}/t${RES}/$date/pan_$nid  ICMGG${EXPS}INIUA
     ln -sf ${IFSDATA}/t${RES}/$date/pua_$nid  ICMSH${EXPS}INIT
 fi
 
 # Link climatologies
-ln -sf ${IFSDATA}/climatology/ifsdata .
-ln -sf ${IFSDATA}/rtables
-if [ $RES -eq 21 ]; then
-    ln -sf ${IFSDATA}/38r1/climate/${RES}_full
-else
-    ln -sf ${IFSDATA}/38r1/climate/${RES}l_2
-fi
+if [ $OIFSv != "43r3v1" ]; then
+    ln -sf ${IFSDATA}/rtables rtables
+    ln -sf ${IFSDATA}/vtables vtables
+    ln -sf ${IFSDATA}/climatology/ifsdata .
 
+    if [ $RES -eq 21 ]; then
+	ln -sf ${IFSDATA}/38r1/climate/${RES}_full
+    else
+	ln -sf ${IFSDATA}/38r1/climate/${RES}l_2
+    fi
+
+else
+    ln -sf ${IFSDATA}/43r3/rtables
+    ln -sf ${IFSDATA}/43r3/vtables
+    ln -sf ${IFSDATA}/43r3/ifsdata
+
+    ln -sf ${IFSDATA}/43r3/climate.v015/${RES}l_2
+fi
